@@ -1,0 +1,13 @@
+run_datetime: 2026-04-06 16:36:21
+mode: histogram_shifting
+payload: 10000
+seed: 20260406
+device: cpu
+model_file: model_state.pth
+image: Barbara.bmp, psnr: 55.74, ssim: 0.999962, elapsed_seconds: 8.3892
+image: Lena.bmp, psnr: 55.25, ssim: 0.999958, elapsed_seconds: 5.954
+image: Peppers.bmp, psnr: 50.95, ssim: 0.999911, elapsed_seconds: 7.4414
+image: yacht.bmp, psnr: 59.99, ssim: 0.999989, elapsed_seconds: 6.6382
+average_psnr: 55.48
+average_ssim: 0.999955
+average_elapsed_seconds: 7.1057

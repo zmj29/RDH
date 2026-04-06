@@ -1,0 +1,5 @@
+﻿payload,histogram_shifting_psnr,expansion_embedding_psnr,psnr_gap
+10000,55.48,47.09,8.39
+20000,51.79,44.62,7.17
+50000,46.82,40.68,6.14
+100000,42.54,37.45,5.09

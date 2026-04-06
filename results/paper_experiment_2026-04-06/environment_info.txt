@@ -1,0 +1,10 @@
+run_datetime: 2026-04-06 16:36:21
+device: cpu
+python_version: 3.7.1
+torch_version: 1.6.0
+matlab_version: 9.6.0.1072779 (R2019a)
+model_file: model_state.pth
+image_names: Barbara.bmp, Lena.bmp, Peppers.bmp, yacht.bmp
+payloads: 10000, 20000, 50000, 100000
+modes: histogram_shifting, expansion_embedding
+seed: 20260406
