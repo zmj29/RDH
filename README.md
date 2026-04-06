@@ -26,6 +26,10 @@ This version can only calculate the PSNR of images by using the proposed CNN-bas
 
    "model_parameter":         This folder contains the parameter of the proposed CNN-based predictor.
 
+   "data_processing":        This folder contains batch experiment scripts for exporting per-image results, average tables, logs, and charts used in the thesis.
+
+   "results/paper_experiment_2026-04-06":  This folder contains the exported thesis experiment results, including CSV files, environment information, logs, and chart images.
+
 
 ## Usage:
 
@@ -53,6 +57,33 @@ After using this program, the PSNR of the watermarked image by using the propose
 
    #### python main.py -size 512 512 -model .\model_parameter\model_state.pth -folder .\standard_test_images -mode expansion_embedding -length 10000
 
+
+## Thesis Scripts and Results
+
+### Batch export scripts
+
+Run the thesis-oriented batch experiment exporter from the repository root:
+
+#### python data_processing\run_cnnp_batch.py
+
+Generate thesis chart images from the exported CSV files:
+
+#### python data_processing\plot_cnnp_results.py
+
+### Stored experiment results
+
+The repository includes one structured result set under:
+
+#### .\results\paper_experiment_2026-04-06
+
+This result folder contains:
+
+- per-image result tables
+- average result tables
+- environment information
+- raw logs for each mode and payload
+- chart source CSV files
+- generated chart PNG files
 
 
 
