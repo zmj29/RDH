@@ -1,0 +1,13 @@
+run_datetime: 2026-04-06 16:36:21
+mode: expansion_embedding
+payload: 20000
+seed: 20260406
+device: cpu
+model_file: model_state.pth
+image: Barbara.bmp, psnr: 39.99, ssim: 0.998562, elapsed_seconds: 4.4188
+image: Lena.bmp, psnr: 47.76, ssim: 0.999765, elapsed_seconds: 4.0259
+image: Peppers.bmp, psnr: 41.72, ssim: 0.999255, elapsed_seconds: 4.9986
+image: yacht.bmp, psnr: 49.03, ssim: 0.999865, elapsed_seconds: 5.1089
+average_psnr: 44.62
+average_ssim: 0.999362
+average_elapsed_seconds: 4.638

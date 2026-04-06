@@ -1,0 +1,9 @@
+﻿payload,mode,average_psnr,average_ssim,average_elapsed_seconds
+10000,expansion_embedding,47.09,0.999627,4.5196
+10000,histogram_shifting,55.48,0.999955,7.1057
+20000,expansion_embedding,44.62,0.999362,4.638
+20000,histogram_shifting,51.79,0.999896,5.6933
+50000,expansion_embedding,40.68,0.998503,4.8002
+50000,histogram_shifting,46.82,0.999675,6.4534
+100000,expansion_embedding,37.45,0.997097,5.0579
+100000,histogram_shifting,42.54,0.999145,5.2266
