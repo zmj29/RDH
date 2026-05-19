@@ -24,7 +24,7 @@ from data_processing.cnnp_runtime import run_batch_experiment
 
 def parse_args():
     parser = argparse.ArgumentParser(description="批量运行 CNNP 论文实验并导出 CSV 与日志")
-    parser.add_argument("--image-dir", default=r".\standard_test_images", help="标准测试图像目录")
+    parser.add_argument("--image-dir", default=r".\datasets\standard_test_images", help="标准测试图像目录")
     parser.add_argument("--model-path", default=r".\model_parameter\model_state.pth", help="模型权重路径")
     parser.add_argument("--modes", nargs="+", default=DEFAULT_MODES, help="实验模式列表")
     parser.add_argument("--payloads", nargs="+", default=DEFAULT_PAYLOADS, type=int, help="载荷列表")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import math
 import platform
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,40 @@ from data_processing.cnnp_experiment import (
 
 
 def _load_runtime_dependencies():
+    missing = []
+    loaded = {}
+    dependencies = {
+        "cv2": "cv2",
+        "numpy": "np",
+        "torch": "torch",
+        "matlab.engine": "matlab_engine",
+        "utils": "utils",
+        "model.predict_model": "predict_model",
+    }
+    for module_name, alias in dependencies.items():
+        try:
+            loaded[alias] = importlib.import_module(module_name)
+        except Exception as exc:
+            missing.append(f"{module_name} ({type(exc).__name__}: {exc})")
+    if missing:
+        missing_lines = "\n".join(f"- {item}" for item in missing)
+        raise RuntimeError(
+            "Runtime dependencies are missing or unavailable.\n\n"
+            f"Current interpreter: {sys.executable}\n\n"
+            f"Missing modules:\n{missing_lines}\n\n"
+            "Use a project environment with PyTorch, OpenCV, NumPy, and MATLAB Engine installed."
+        )
+    return (
+        loaded["cv2"],
+        loaded["np"],
+        loaded["torch"],
+        loaded["matlab_engine"],
+        loaded["utils"],
+        loaded["predict_model"].PredictModel,
+    )
+
+
+def _load_runtime_dependencies_legacy():
     try:
         cv2 = importlib.import_module("cv2")
         np_module = importlib.import_module("numpy")
@@ -36,9 +71,20 @@ def _load_runtime_dependencies():
         predict_model = importlib.import_module("model.predict_model")
     except Exception as exc:
         raise RuntimeError(
-            "运行批量实验前，请在兼容环境中安装 torch、torchvision、opencv-python、numpy 和 matlab.engine。"
+            "Runtime dependencies are missing. Install torch, torchvision, opencv-python, "
+            "numpy, and matlab.engine in a compatible Python environment."
         ) from exc
     return cv2, np_module, torch, matlab_engine, utils, predict_model.PredictModel
+
+
+def _emit_progress(progress_callback, event):
+    if progress_callback is not None:
+        progress_callback(event)
+
+
+def _wait_if_paused(pause_callback):
+    if pause_callback is not None:
+        pause_callback()
 
 
 def _build_message(np_module, payload, seed):
@@ -98,8 +144,22 @@ def _build_environment_info(context, run_datetime, image_names, payloads, modes,
     }
 
 
-def _run_condition(context, image_dir, image_names, mode, payload, seed, image_size, run_datetime):
+def _run_condition(
+    context,
+    image_dir,
+    image_names,
+    mode,
+    payload,
+    seed,
+    image_size,
+    run_datetime,
+    progress_callback=None,
+    progress_state=None,
+    pause_callback=None,
+):
     rows = []
+    if progress_state is None:
+        progress_state = {"completed": 0, "total": len(image_names)}
     log_lines = [
         f"run_datetime: {run_datetime}",
         f"mode: {mode}",
@@ -110,6 +170,18 @@ def _run_condition(context, image_dir, image_names, mode, payload, seed, image_s
     ]
     message_bits = _build_message(context["np"], payload, seed)
     for image_name in image_names:
+        _wait_if_paused(pause_callback)
+        _emit_progress(
+            progress_callback,
+            {
+                "stage": "image_start",
+                "mode": mode,
+                "payload": payload,
+                "image": image_name,
+                "current": progress_state["completed"],
+                "total": progress_state["total"],
+            },
+        )
         start_time = time.perf_counter()
         original_image, embedded_image = _run_single_image(context, image_dir / image_name, mode, message_bits, image_size)
         elapsed_seconds = round(time.perf_counter() - start_time, 4)
@@ -126,6 +198,21 @@ def _run_condition(context, image_dir, image_names, mode, payload, seed, image_s
             "seed": seed,
         }
         rows.append(row)
+        progress_state["completed"] += 1
+        _emit_progress(
+            progress_callback,
+            {
+                "stage": "image_done",
+                "mode": mode,
+                "payload": payload,
+                "image": image_name,
+                "current": progress_state["completed"],
+                "total": progress_state["total"],
+                "psnr": row["psnr"],
+                "ssim": row["ssim"],
+                "elapsed_seconds": elapsed_seconds,
+            },
+        )
         log_lines.append(f"image: {image_name}, psnr: {row['psnr']}, ssim: {row['ssim']}, elapsed_seconds: {elapsed_seconds}")
     summary_row = summarize_results(rows)[0]
     log_lines.extend(
@@ -144,6 +231,7 @@ def _create_runtime_context(model_path):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     engine = matlab_engine.start_matlab()
     engine.addpath(str(project_root), nargout=0)
+    engine.addpath(str(project_root / "matlab"), nargout=0)
     model = PredictModel(device)
     utils.load_model(str(model_path), model)
     return {
@@ -185,6 +273,8 @@ def run_batch_experiment(
     gap_csv_path=DEFAULT_GAP_CSV,
     environment_info_path=DEFAULT_ENV_INFO,
     logs_dir=DEFAULT_LOGS_DIR,
+    progress_callback=None,
+    pause_callback=None,
 ):
     image_dir = Path(image_dir)
     model_path = Path(model_path)
@@ -199,15 +289,55 @@ def run_batch_experiment(
         raise ValueError(f"no images found in: {image_dir}")
 
     run_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    total_images = len(modes) * len(payloads) * len(image_names)
+    progress_state = {"completed": 0, "total": total_images}
+    _emit_progress(progress_callback, {"stage": "start", "current": 0, "total": total_images})
     context = _create_runtime_context(model_path)
     per_image_rows = []
     try:
         environment_info = _build_environment_info(context, run_datetime, image_names, payloads, modes, seed)
+        _emit_progress(
+            progress_callback,
+            {"stage": "runtime_ready", "current": 0, "total": total_images},
+        )
         for mode in modes:
             for payload in payloads:
-                rows, log_lines = _run_condition(context, image_dir, image_names, mode, payload, seed, image_size, run_datetime)
+                _wait_if_paused(pause_callback)
+                _emit_progress(
+                    progress_callback,
+                    {
+                        "stage": "condition_start",
+                        "mode": mode,
+                        "payload": payload,
+                        "current": progress_state["completed"],
+                        "total": total_images,
+                    },
+                )
+                rows, log_lines = _run_condition(
+                    context,
+                    image_dir,
+                    image_names,
+                    mode,
+                    payload,
+                    seed,
+                    image_size,
+                    run_datetime,
+                    progress_callback=progress_callback,
+                    progress_state=progress_state,
+                    pause_callback=pause_callback,
+                )
                 per_image_rows.extend(rows)
                 write_text_lines(Path(logs_dir) / f"{mode}_{payload}.txt", log_lines)
+                _emit_progress(
+                    progress_callback,
+                    {
+                        "stage": "condition_done",
+                        "mode": mode,
+                        "payload": payload,
+                        "current": progress_state["completed"],
+                        "total": total_images,
+                    },
+                )
     finally:
         context["engine"].exit()
 
@@ -220,5 +350,14 @@ def run_batch_experiment(
         trend_csv_path,
         gap_csv_path,
         environment_info_path,
+    )
+    _emit_progress(
+        progress_callback,
+        {
+            "stage": "complete",
+            "current": total_images,
+            "total": total_images,
+            "output_dir": str(Path(average_csv_path).parent),
+        },
     )
     return {"per_image_rows": per_image_rows, "summary_rows": summary_rows, "trend_rows": trend_rows, "gap_rows": gap_rows}

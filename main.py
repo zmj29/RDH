@@ -24,6 +24,7 @@ def main():
     engine = matlab.engine.start_matlab()  # Start MATLAB process
     project_dir = os.path.dirname(os.path.abspath(__file__))
     engine.addpath(project_dir, nargout=0)
+    engine.addpath(os.path.join(project_dir, "matlab"), nargout=0)
 
     parser = argparse.ArgumentParser(description='Calculating PSNR')
     parser.add_argument('--img-size', '-size',  nargs='+', default=[512, 512], type=int,
@@ -32,7 +33,7 @@ def main():
     parser.add_argument('--model-pth', '-model', default=r'.\model_parameter\model_state.pth', type=str,
                         help='The place of the model parameter.')
 
-    parser.add_argument('--img-path', '-folder', default=r'.\standard_test_images', type=str,
+    parser.add_argument('--img-path', '-folder', default=r'.\datasets\standard_test_images', type=str,
                         help='The place of the image to be predicted.')
 
     parser.add_argument('--mode', '-mode', default='histogram_shifting', type=str,
